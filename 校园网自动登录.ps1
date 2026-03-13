@@ -1,9 +1,12 @@
 ﻿# 校园网自动登录工具
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+
 $global:scriptPath = $PSScriptRoot
 if ([string]::IsNullOrEmpty($global:scriptPath)) { $global:scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path }
+if ([string]::IsNullOrEmpty($global:scriptPath)) { $global:scriptPath = Split-Path -Parent $PSCommandPath }
 if ([string]::IsNullOrEmpty($global:scriptPath)) { $global:scriptPath = Get-Location }
+
 $global:configPath = Join-Path $global:scriptPath "config.json"
 $global:logPath = Join-Path $global:scriptPath "login.log"
 $global:shortcutPath = Join-Path ([Environment]::GetFolderPath("Startup")) "校园网自动登录.lnk"
@@ -100,7 +103,7 @@ function Invoke-CampusLogin {
 function Show-ConfigForm {
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "校园网配置 - By 诺亚 723167066"
-    $form.Size = New-Object System.Drawing.Size(400, 320)
+    $form.Size = New-Object System.Drawing.Size(400, 380)
     $form.StartPosition = "CenterScreen"
     $form.FormBorderStyle = "FixedDialog"
     $form.MaximizeBox = $false
@@ -123,34 +126,50 @@ function Show-ConfigForm {
     $userLabel.Text = "账号："
     $userLabel.Font = $labelFont
     $userLabel.Size = New-Object System.Drawing.Size(80, 25)
-    $userLabel.Location = New-Object System.Drawing.Point(30, 70)
+    $userLabel.Location = New-Object System.Drawing.Point(30, 60)
     $form.Controls.Add($userLabel)
 
     $userTextBox = New-Object System.Windows.Forms.TextBox
     $userTextBox.Font = $labelFont
     $userTextBox.Size = New-Object System.Drawing.Size(250, 25)
-    $userTextBox.Location = New-Object System.Drawing.Point(110, 68)
+    $userTextBox.Location = New-Object System.Drawing.Point(110, 58)
     $form.Controls.Add($userTextBox)
 
     $passLabel = New-Object System.Windows.Forms.Label
     $passLabel.Text = "密码："
     $passLabel.Font = $labelFont
     $passLabel.Size = New-Object System.Drawing.Size(80, 25)
-    $passLabel.Location = New-Object System.Drawing.Point(30, 110)
+    $passLabel.Location = New-Object System.Drawing.Point(30, 95)
     $form.Controls.Add($passLabel)
 
     $passTextBox = New-Object System.Windows.Forms.TextBox
     $passTextBox.Font = $labelFont
     $passTextBox.Size = New-Object System.Drawing.Size(250, 25)
-    $passTextBox.Location = New-Object System.Drawing.Point(110, 108)
+    $passTextBox.Location = New-Object System.Drawing.Point(110, 93)
     $passTextBox.PasswordChar = "*"
     $form.Controls.Add($passTextBox)
+
+    $ispLabel = New-Object System.Windows.Forms.Label
+    $ispLabel.Text = "运营商："
+    $ispLabel.Font = $labelFont
+    $ispLabel.Size = New-Object System.Drawing.Size(80, 25)
+    $ispLabel.Location = New-Object System.Drawing.Point(30, 130)
+    $form.Controls.Add($ispLabel)
+
+    $ispComboBox = New-Object System.Windows.Forms.ComboBox
+    $ispComboBox.Font = $labelFont
+    $ispComboBox.Size = New-Object System.Drawing.Size(250, 25)
+    $ispComboBox.Location = New-Object System.Drawing.Point(110, 128)
+    $ispComboBox.DropDownStyle = "DropDownList"
+    $ispComboBox.Items.AddRange(@("校园网(本地)", "移动", "联通", "电信"))
+    $ispComboBox.SelectedIndex = 0
+    $form.Controls.Add($ispComboBox)
 
     $autoStartCheckBox = New-Object System.Windows.Forms.CheckBox
     $autoStartCheckBox.Text = "开机自动登录"
     $autoStartCheckBox.Font = $labelFont
     $autoStartCheckBox.Size = New-Object System.Drawing.Size(200, 25)
-    $autoStartCheckBox.Location = New-Object System.Drawing.Point(110, 150)
+    $autoStartCheckBox.Location = New-Object System.Drawing.Point(110, 165)
     $autoStartCheckBox.Checked = $true
     $form.Controls.Add($autoStartCheckBox)
 
@@ -158,7 +177,7 @@ function Show-ConfigForm {
     $notifyCheckBox.Text = "显示登录通知"
     $notifyCheckBox.Font = $labelFont
     $notifyCheckBox.Size = New-Object System.Drawing.Size(200, 25)
-    $notifyCheckBox.Location = New-Object System.Drawing.Point(110, 180)
+    $notifyCheckBox.Location = New-Object System.Drawing.Point(110, 195)
     $notifyCheckBox.Checked = $true
     $form.Controls.Add($notifyCheckBox)
 
@@ -166,7 +185,7 @@ function Show-ConfigForm {
     $saveButton.Text = "保存并登录"
     $saveButton.Font = $buttonFont
     $saveButton.Size = New-Object System.Drawing.Size(150, 40)
-    $saveButton.Location = New-Object System.Drawing.Point(125, 220)
+    $saveButton.Location = New-Object System.Drawing.Point(125, 235)
     $saveButton.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 215)
     $saveButton.ForeColor = [System.Drawing.Color]::White
     $saveButton.FlatStyle = "Flat"
@@ -177,14 +196,27 @@ function Show-ConfigForm {
     $saveButton.Add_Click({
         $userId = $userTextBox.Text.Trim()
         $password = $passTextBox.Text
+        $ispIndex = $ispComboBox.SelectedIndex
+        
         if ([string]::IsNullOrEmpty($userId) -or [string]::IsNullOrEmpty($password)) {
             [System.Windows.Forms.MessageBox]::Show("请输入账号和密码！", "提示", "OK", "Warning")
             return
         }
-        if ($userId -notmatch "@") { $userId = "$userId@gxylocal" }
+        
+        $suffix = switch ($ispIndex) {
+            0 { "gxylocal" }
+            1 { "gxyyd" }
+            2 { "gxylt" }
+            3 { "gxydx" }
+            default { "gxylocal" }
+        }
+        
+        if ($userId -notmatch "@") { $userId = "$userId@$suffix" }
+        
         $global:configResult = @{
             userId = $userId
             password = $password
+            ispType = $ispIndex
             autoStart = $autoStartCheckBox.Checked
             showNotify = $notifyCheckBox.Checked
             loginUrl = "http://211.69.15.10:6060/quickauth.do"
@@ -201,6 +233,7 @@ function Show-ConfigForm {
             $existing = Get-Content $global:configPath | ConvertFrom-Json
             $userTextBox.Text = $existing.userId -replace "@.*$", ""
             $passTextBox.Text = $existing.password
+            if ($existing.ispType -ne $null) { $ispComboBox.SelectedIndex = $existing.ispType }
             $autoStartCheckBox.Checked = $existing.autoStart
             $notifyCheckBox.Checked = $existing.showNotify
         } catch {}
@@ -216,16 +249,26 @@ function Enable-AutoStart {
         $Shortcut = $WshShell.CreateShortcut($global:shortcutPath)
         $Shortcut.TargetPath = "powershell.exe"
         $Shortcut.Arguments = "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$($global:scriptPath)\校园网自动登录.ps1`" -Login"
+        $Shortcut.WorkingDirectory = $global:scriptPath
         $Shortcut.Save()
+        Write-Log "开机自启已启用: $($global:shortcutPath)"
+        Write-Log "快捷方式目标: powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$($global:scriptPath)\校园网自动登录.ps1`" -Login"
         return $true
-    } catch { return $false }
+    } catch { 
+        Write-Log "启用开机自启失败: $_"
+        return $false 
+    }
 }
 
 function Disable-AutoStart {
     try {
         if (Test-Path $global:shortcutPath) { Remove-Item $global:shortcutPath -Force }
+        Write-Log "开机自启已关闭"
         return $true
-    } catch { return $false }
+    } catch { 
+        Write-Log "关闭开机自启失败: $_"
+        return $false 
+    }
 }
 
 function Show-AutoStartMenu {
@@ -324,21 +367,55 @@ function Show-MainMenu {
     return $global:menuResult
 }
 
-Write-Log "脚本启动"
+Write-Log "脚本启动，路径: $global:scriptPath"
+Write-Log "配置文件路径: $global:configPath"
+Write-Log "PSScriptRoot: $PSScriptRoot"
+Write-Log "PSCommandPath: $PSCommandPath"
 
 if ($args -contains "-Login") {
+    Write-Log "开机自动登录模式"
+    
+    Write-Log "等待网络连接..."
+    $networkReady = $false
+    for ($wait = 1; $wait -le 30; $wait++) {
+        try {
+            $network = Get-NetConnectionProfile -ErrorAction SilentlyContinue
+            if ($network -and $network.Status -eq "Connected") {
+                Write-Log "网络已连接 (等待 ${wait} 秒)"
+                $networkReady = $true
+                break
+            }
+        } catch {}
+        Write-Log "等待网络... ($wait/30)"
+        Start-Sleep -Seconds 1
+    }
+    
+    if (-not $networkReady) {
+        Write-Log "网络未连接，尝试登录..."
+    }
+    
+    Start-Sleep -Seconds 3
+    Write-Log "检查配置文件: $global:configPath"
     if (Test-Path $global:configPath) {
-        $cfg = Get-Content $global:configPath | ConvertFrom-Json
-        $configHash = @{
-            userId = $cfg.userId
-            password = $cfg.password
-            showNotify = $cfg.showNotify
-            loginUrl = $cfg.loginUrl
-            wlanAcName = $cfg.wlanAcName
-            wlanAcIp = $cfg.wlanAcIp
-            portalPageId = $cfg.portalPageId
+        Write-Log "配置文件存在，读取配置..."
+        try {
+            $cfg = Get-Content $global:configPath -Raw | ConvertFrom-Json
+            Write-Log "配置读取成功，用户: $($cfg.userId)"
+            $configHash = @{
+                userId = $cfg.userId
+                password = $cfg.password
+                showNotify = $cfg.showNotify
+                loginUrl = $cfg.loginUrl
+                wlanAcName = $cfg.wlanAcName
+                wlanAcIp = $cfg.wlanAcIp
+                portalPageId = $cfg.portalPageId
+            }
+            Invoke-CampusLogin -config $configHash
+        } catch {
+            Write-Log "读取配置失败: $_"
         }
-        Invoke-CampusLogin -config $configHash
+    } else {
+        Write-Log "配置文件不存在: $global:configPath"
     }
 } else {
     if (-not (Test-Path $global:configPath)) {
@@ -360,7 +437,7 @@ if ($args -contains "-Login") {
                 }
             }
             "Login" {
-                $cfg = Get-Content $global:configPath | ConvertFrom-Json
+                $cfg = Get-Content $global:configPath -Raw | ConvertFrom-Json
                 $configHash = @{
                     userId = $cfg.userId
                     password = $cfg.password
