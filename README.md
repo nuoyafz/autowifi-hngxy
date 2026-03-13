@@ -3,6 +3,7 @@
 Windows 平台校园网自动登录工具，基于 PowerShell 开发，无需安装 Python 或其他依赖，开箱即用。
 
 ## 功能特性
+<img width="700" height="665" alt="image" src="https://github.com/user-attachments/assets/023361bf-6976-4852-b48e-3b7f28acc92d" />
 
 - ✅ **一键登录** - 输入账号密码，自动完成校园网认证
 - ✅ **开机自启** - 勾选开机自动登录，每次开机无需手动操作
@@ -16,6 +17,7 @@ Windows 平台校园网自动登录工具，基于 PowerShell 开发，无需安
 ## 使用方法
 
 ### 1. 运行程序
+
 
 
 
